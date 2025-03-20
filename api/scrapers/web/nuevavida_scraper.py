@@ -1,34 +1,30 @@
 from bs4 import BeautifulSoup
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from ..base_beautifulsoup_scraper import BaseBeautifulSoupScraper
 from time import sleep
 import requests
 from datetime import datetime
 import re
 
-class NuevaVidaScraper(BaseBeautifulSoupScraper):
+class NuevavidaScraper(BaseBeautifulSoupScraper):
+    """Scraper for Nuevavida website / Скрапер для сайта Nuevavida"""
+    
     def __init__(self):
-        super().__init__("https://adoptargatosmadrid-nuevavida.org/gatos-en-adopcion/")
-        # Добавляем больше заголовков для имитации браузера
+        """Initialize the scraper / Инициализация скрапера"""
+        super().__init__("https://nuevavida.org/product-category/gatos/")
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'Cache-Control': 'max-age=0'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
 
-    def get_page(self, url: str) -> str:
-        """Получает HTML страницы с дополнительной обработкой ошибок"""
+    def get_page(self, url: str) -> Optional[str]:
+        """Get page content with proper encoding handling / Получение содержимого страницы с правильной обработкой кодировки"""
         try:
             print(f"\nAttempting to fetch page: {url}")
             response = requests.get(url, headers=self.headers, timeout=30)
             print(f"Response status: {response.status_code}")
             
             if response.status_code == 200:
-                # Пробуем определить кодировку из заголовков
+                # Handle encoding / Обработка кодировки
                 if 'content-type' in response.headers:
                     content_type = response.headers['content-type'].lower()
                     if 'charset=' in content_type:
@@ -36,63 +32,68 @@ class NuevaVidaScraper(BaseBeautifulSoupScraper):
                         print(f"Detected charset from headers: {charset}")
                         response.encoding = charset
                     else:
-                        # Если кодировка не указана, пробуем UTF-8
                         response.encoding = 'utf-8'
                         print("Using UTF-8 encoding")
-                else:
-                    response.encoding = 'utf-8'
-                    print("Using UTF-8 encoding")
                 
                 print("Successfully retrieved HTML")
                 return response.text
             else:
                 print(f"Error fetching page. Status: {response.status_code}")
                 print(f"Response text: {response.text[:500]}")
-                return ""
+                return None
                 
         except requests.exceptions.RequestException as e:
             print(f"Request error: {str(e)}")
-            return ""
+            return None
         except Exception as e:
             print(f"Unexpected error: {str(e)}")
-            return ""
+            return None
 
-    def extract_basic_info(self, card: BeautifulSoup) -> Dict[str, Any]:
-        """Извлекает базовую информацию из карточки животного"""
+    def extract_basic_info(self, card: BeautifulSoup) -> Optional[Dict[str, Any]]:
+        """Extract basic information from a cat card / Извлечение базовой информации из карточки кота"""
         try:
-            # Извлекаем ссылку и имя
-            link_elem = card.select_one('a.woocommerce-LoopProduct-link')
-            if not link_elem:
-                print("Could not find link on card")
-                return {}
+            # Extract name / Извлечение имени
+            name_element = card.select_one('h2.woocommerce-loop-product__title')
+            if not name_element:
+                print("Name element not found")
+                return None
+            name = name_element.text.strip()
+            
+            # Extract gender from name / Извлечение пола из имени
+            gender = "unknown"
+            if name.lower().startswith(("macho", "macho ")):
+                gender = "male"
+                name = name[6:].strip()  # Remove "MACHO " prefix / Удаление префикса "MACHO "
+            elif name.lower().startswith(("hembra", "hembra ")):
+                gender = "female"
+                name = name[7:].strip()  # Remove "HEMBRA " prefix / Удаление префикса "HEMBRA "
                 
-            link = link_elem.get('href', '')
-            name = link_elem.select_one('h2.woocommerce-loop-product__title')
-            name = name.text.strip() if name else None
-            
-            # Извлекаем изображение
-            img_elem = card.select_one('img.attachment-woocommerce_thumbnail')
-            image_url = img_elem.get('src', '') if img_elem else None
-            
-            # Извлекаем категории и теги
-            classes = card.get('class', [])
-            gender = next((c.split('-')[1] for c in classes if c.startswith('product_cat-') and c.split('-')[1] in ['macho', 'hembra']), None)
-            age = next((c.split('-')[1] for c in classes if c.startswith('product_cat-') and c.split('-')[1] in ['cachorro', 'adulto', 'abuelo']), None)
+            # Extract age / Извлечение возраста
+            age = "unknown"
+            age_text = name.lower()
+            if "cachorro" in age_text or "cachorrito" in age_text:
+                age = "kitten"
+            elif "adulto" in age_text:
+                age = "adult"
+            elif "senior" in age_text:
+                age = "senior"
+                
+            # Extract source URL / Извлечение исходного URL
+            source_url = card.select_one('a.woocommerce-LoopProduct-link')['href']
             
             print(f"\nExtracted basic info for: {name}")
             print(f"Gender: {gender}, Age: {age}")
             
             return {
                 "name": name,
-                "source_url": link,
-                "image_url": image_url,
                 "gender": gender,
-                "age": age
+                "age": age,
+                "source_url": source_url
             }
             
         except Exception as e:
             print(f"Error extracting basic info: {str(e)}")
-            return {}
+            return None
 
     def parse_birth_date(self, date_str: str) -> datetime:
         """Конвертирует строковую дату в объект datetime"""
@@ -103,7 +104,7 @@ class NuevaVidaScraper(BaseBeautifulSoupScraper):
             return None
 
     def extract_detailed_info(self, url: str) -> Dict[str, Any]:
-        """Извлекает детальную информацию со страницы животного"""
+        """Extract detailed information from cat's page / Извлечение детальной информации со страницы кота"""
         try:
             html = self.get_page(url)
            
@@ -112,73 +113,52 @@ class NuevaVidaScraper(BaseBeautifulSoupScraper):
                 
             soup = BeautifulSoup(html, 'html.parser')
             
-            # Извлекаем описание
+            # Extract description / Извлечение описания
             description = ""
-            # Пробуем разные селекторы для поиска описания
-            desc_selectors = [
-                '.elementor-element-7a01d681 .elementor-widget-container div',
-                '.elementor-widget-text-editor div',
-                '.woocommerce-product-details__short-description',
-                '.elementor-widget-container p',
-                '.elementor-text-editor'
-            ]
+            main_container = soup.select_one('.elementor-element-7a01d681 .elementor-widget-container')
             
-            for selector in desc_selectors:
-                desc_elem = soup.select_one(selector)
-                if desc_elem:
-                    # Получаем текст и проверяем, что это не email и не дата рождения
-                    text = desc_elem.get_text().strip()
-                    if text and not '@' in text and not 'Fecha de nacimiento:' in text:
-                        description = text
-                        print(f"Found description using selector {selector}: {description}")
-                        break
-            
-            # Если описание все еще пустое, ищем в основном контейнере описания
-            if not description:
-                desc_container = soup.select_one('.elementor-element-7a01d681')
-                if desc_container:
-                    # Собираем весь текст из контейнера, исключая нежелательные элементы
-                    text_elements = []
-                    for elem in desc_container.find_all(text=True, recursive=True):
-                        text = elem.strip()
-                        # Пропускаем пустые строки, email и дату рождения
-                        if text and not '@' in text and not 'Fecha de nacimiento:' in text:
-                            text_elements.append(text)
+            if main_container:
+                # Get all text elements / Получение всех текстовых элементов
+                text_elements = []
+                for element in main_container.stripped_strings:
+                    text = element.strip()
+                    # Skip empty strings, emails, birth dates and short texts / Пропускаем пустые строки, email, даты рождения и короткие тексты
+                    if (text and 
+                        not '@' in text and 
+                        not 'nacimiento' in text.lower() and 
+                        len(text) > 10):
+                        text_elements.append(text)
+                
+                if text_elements:
+                    description = ' '.join(text_elements)
                     
-                    if text_elements:
-                        description = ' '.join(text_elements)
-                        print(f"Found description in container: {description}")
+            # Remove three-letter tags at the end / Удаление трехбуквенных тегов в конце
+            if description:
+                words = description.split()
+                if words and len(words[-1]) == 3:
+                    description = ' '.join(words[:-1])
                     
-            # Извлекаем дату рождения
+            # Extract birth date / Извлечение даты рождения
             birth_date = None
-            # Ищем дату рождения в специальном элементе
-            birth_elem = soup.select_one('.elementor-element-479e4d06.elementor-widget-text-editor')
-            if birth_elem:
-                try:
-                    birth_text = birth_elem.text.strip()
-                    if "Fecha de nacimiento:" in birth_text:
-                        date_str = birth_text.replace("Fecha de nacimiento:", "").strip()
-                        birth_date = self.parse_birth_date(date_str)
-                        print(f"Found birth date in special element: {birth_date}")
-                except Exception as e:
-                    print(f"Error extracting birth date from special element: {str(e)}")
-            
-            # Если дата не найдена в специальном элементе, ищем во всем тексте страницы
+            try:
+                # Try to find birth date in special element / Пробуем найти дату рождения в специальном элементе
+                birth_date_element = soup.select_one('.elementor-element-7a01d681 .elementor-widget-container')
+                if birth_date_element:
+                    birth_date_text = birth_date_element.get_text()
+                    if 'nacimiento' in birth_date_text.lower():
+                        birth_date = birth_date_text.split('nacimiento')[-1].strip()
+            except Exception as e:
+                print(f"Error extracting birth date from special element: {str(e)}")
+                
             if not birth_date:
                 try:
-                    # Ищем дату в формате DD/MM/YYYY во всем тексте страницы
-                    date_pattern = r"(\d{1,2}/\d{1,2}/\d{4})"
-                    all_text = soup.get_text()
-                    date_matches = re.findall(date_pattern, all_text)
-                    
-                    if date_matches:
-                        # Берем первую найденную дату
-                        date_str = date_matches[0]
-                        birth_date = self.parse_birth_date(date_str)
-                        print(f"Found birth date in page text: {birth_date}")
+                    # Try to find birth date in general page text / Пробуем найти дату рождения в общем тексте страницы
+                    page_text = soup.get_text()
+                    if 'nacimiento' in page_text.lower():
+                        birth_date = page_text.split('nacimiento')[-1].split('\n')[0].strip()
                 except Exception as e:
                     print(f"Error extracting birth date from page text: {str(e)}")
-            
+                    
             print(f"Extracted detailed info: birth_date={birth_date}")
             
             return {
@@ -191,7 +171,7 @@ class NuevaVidaScraper(BaseBeautifulSoupScraper):
             return {}
 
     def extract_animals(self) -> List[Dict[str, Any]]:
-        """Извлекает информацию о котах с помощью BeautifulSoup"""
+        """Extract information about cats using BeautifulSoup / Извлечение информации о котах с помощью BeautifulSoup"""
         animals = []
         html = self.get_page(self.base_url)
         
@@ -203,23 +183,23 @@ class NuevaVidaScraper(BaseBeautifulSoupScraper):
         
         soup = BeautifulSoup(html, 'html.parser')
         try:
-            # Ищем все карточки котов
+            # Find all cat cards / Поиск всех карточек котов
             cat_cards = soup.select('li.product.type-product')
             print(f"\nFound cat cards: {len(cat_cards)}")
             
-            # Обрабатываем карточки
-            for card in cat_cards[:]:
+            # Process cards / Обработка карточек
+            for card in cat_cards:
                 try:
-                    # Извлекаем базовую информацию
+                    # Extract basic information / Извлечение базовой информации
                     basic_info = self.extract_basic_info(card)
                     if not basic_info:
                         continue
                     
-                    # Извлекаем детальную информацию
+                    # Extract detailed information / Извлечение детальной информации
                     detailed_info = self.extract_detailed_info(basic_info['source_url'])
                     print("detailed_info", detailed_info)
 
-                    # Объединяем информацию
+                    # Combine information / Объединение информации
                     animal_data = {
                         **basic_info,
                         **detailed_info,
@@ -229,7 +209,7 @@ class NuevaVidaScraper(BaseBeautifulSoupScraper):
                     animals.append(animal_data)
                     print(f"Successfully extracted all data for: {basic_info['name']}")
                     
-                    # Добавляем небольшую задержку между запросами
+                    # Add small delay between requests / Добавление небольшой задержки между запросами
                     sleep(1)
                     
                 except Exception as e:
@@ -242,7 +222,7 @@ class NuevaVidaScraper(BaseBeautifulSoupScraper):
         return animals
 
     def run(self) -> tuple[List[Dict[str, Any]], Dict[str, str]]:
-        """Запускает скрапер и возвращает извлеченные данные"""
+        
         animals = self.extract_animals()
         shelter_info = {
             "name": "NUEVAVIDA Adopciones",
