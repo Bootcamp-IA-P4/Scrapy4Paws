@@ -4,6 +4,7 @@ from ..base_beautifulsoup_scraper import BaseBeautifulSoupScraper
 from time import sleep
 import requests
 from datetime import datetime
+import re
 
 class NuevaVidaScraper(BaseBeautifulSoupScraper):
     def __init__(self):
@@ -67,16 +68,16 @@ class NuevaVidaScraper(BaseBeautifulSoupScraper):
                 
             link = link_elem.get('href', '')
             name = link_elem.select_one('h2.woocommerce-loop-product__title')
-            name = name.text.strip() if name else "Unknown"
+            name = name.text.strip() if name else None
             
             # Извлекаем изображение
             img_elem = card.select_one('img.attachment-woocommerce_thumbnail')
-            image_url = img_elem.get('src', '') if img_elem else ''
+            image_url = img_elem.get('src', '') if img_elem else None
             
             # Извлекаем категории и теги
             classes = card.get('class', [])
-            gender = next((c.split('-')[1] for c in classes if c.startswith('product_cat-') and c.split('-')[1] in ['macho', 'hembra']), 'unknown')
-            age = next((c.split('-')[1] for c in classes if c.startswith('product_cat-') and c.split('-')[1] in ['cachorro', 'adulto']), 'unknown')
+            gender = next((c.split('-')[1] for c in classes if c.startswith('product_cat-') and c.split('-')[1] in ['macho', 'hembra']), None)
+            age = next((c.split('-')[1] for c in classes if c.startswith('product_cat-') and c.split('-')[1] in ['cachorro', 'adulto', 'abuelo']), None)
             
             print(f"\nExtracted basic info for: {name}")
             print(f"Gender: {gender}, Age: {age}")
@@ -113,13 +114,44 @@ class NuevaVidaScraper(BaseBeautifulSoupScraper):
             
             # Извлекаем описание
             description = ""
-            desc_elem = soup.select_one('.elementor-element-7a01d681 .elementor-widget-container div')
-            if desc_elem:
-                description = desc_elem.get_text().strip()
-                print(f"Found description: {description}")
+            # Пробуем разные селекторы для поиска описания
+            desc_selectors = [
+                '.elementor-element-7a01d681 .elementor-widget-container div',
+                '.elementor-widget-text-editor div',
+                '.woocommerce-product-details__short-description',
+                '.elementor-widget-container p',
+                '.elementor-text-editor'
+            ]
+            
+            for selector in desc_selectors:
+                desc_elem = soup.select_one(selector)
+                if desc_elem:
+                    # Получаем текст и проверяем, что это не email и не дата рождения
+                    text = desc_elem.get_text().strip()
+                    if text and not '@' in text and not 'Fecha de nacimiento:' in text:
+                        description = text
+                        print(f"Found description using selector {selector}: {description}")
+                        break
+            
+            # Если описание все еще пустое, ищем в основном контейнере описания
+            if not description:
+                desc_container = soup.select_one('.elementor-element-7a01d681')
+                if desc_container:
+                    # Собираем весь текст из контейнера, исключая нежелательные элементы
+                    text_elements = []
+                    for elem in desc_container.find_all(text=True, recursive=True):
+                        text = elem.strip()
+                        # Пропускаем пустые строки, email и дату рождения
+                        if text and not '@' in text and not 'Fecha de nacimiento:' in text:
+                            text_elements.append(text)
+                    
+                    if text_elements:
+                        description = ' '.join(text_elements)
+                        print(f"Found description in container: {description}")
                     
             # Извлекаем дату рождения
             birth_date = None
+            # Ищем дату рождения в специальном элементе
             birth_elem = soup.select_one('.elementor-element-479e4d06.elementor-widget-text-editor')
             if birth_elem:
                 try:
@@ -127,9 +159,25 @@ class NuevaVidaScraper(BaseBeautifulSoupScraper):
                     if "Fecha de nacimiento:" in birth_text:
                         date_str = birth_text.replace("Fecha de nacimiento:", "").strip()
                         birth_date = self.parse_birth_date(date_str)
-                        print(f"Found birth date: {birth_date}")
+                        print(f"Found birth date in special element: {birth_date}")
                 except Exception as e:
-                    print(f"Error extracting birth date: {str(e)}")
+                    print(f"Error extracting birth date from special element: {str(e)}")
+            
+            # Если дата не найдена в специальном элементе, ищем во всем тексте страницы
+            if not birth_date:
+                try:
+                    # Ищем дату в формате DD/MM/YYYY во всем тексте страницы
+                    date_pattern = r"(\d{1,2}/\d{1,2}/\d{4})"
+                    all_text = soup.get_text()
+                    date_matches = re.findall(date_pattern, all_text)
+                    
+                    if date_matches:
+                        # Берем первую найденную дату
+                        date_str = date_matches[0]
+                        birth_date = self.parse_birth_date(date_str)
+                        print(f"Found birth date in page text: {birth_date}")
+                except Exception as e:
+                    print(f"Error extracting birth date from page text: {str(e)}")
             
             print(f"Extracted detailed info: birth_date={birth_date}")
             
@@ -159,8 +207,8 @@ class NuevaVidaScraper(BaseBeautifulSoupScraper):
             cat_cards = soup.select('li.product.type-product')
             print(f"\nFound cat cards: {len(cat_cards)}")
             
-            # Обрабатываем только первые 2 карточки
-            for card in cat_cards[:1]:
+            # Обрабатываем карточки
+            for card in cat_cards[:]:
                 try:
                     # Извлекаем базовую информацию
                     basic_info = self.extract_basic_info(card)
