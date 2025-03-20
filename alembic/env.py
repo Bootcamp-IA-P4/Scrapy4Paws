@@ -6,8 +6,11 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from api.models.base import Base
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
 from api.config.settings import settings
+from api.models.base import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -28,7 +31,7 @@ target_metadata = Base.metadata
 # ... etc.
 
 def get_url():
-    return f"postgresql://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
+    return f"postgresql://{settings.DB_USER}:{settings.DB_PASSWORD.get_secret_value()}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.

@@ -18,7 +18,7 @@ services:
         condition: service_healthy
     command: >
       sh -c "alembic upgrade head &&
-             python scripts/main.py"
+             python scripts/run_scraper.py"
 
   postgres:
     image: postgres:13
