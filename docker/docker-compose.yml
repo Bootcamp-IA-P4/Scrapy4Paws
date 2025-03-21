@@ -20,6 +20,24 @@ services:
       sh -c "alembic upgrade head &&
              python scripts/run_scraper.py"
 
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+    volumes:
+      - ../frontend:/app
+    ports:
+      - "8501:8501"
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=scrapy4paws
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PORT=5432
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   postgres:
     image: postgres:13
     volumes:
