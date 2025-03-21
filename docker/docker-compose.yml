@@ -1,24 +1,19 @@
 version: '3.8'
 
 services:
-  web:
+  api:
     build:
       context: ..
-      dockerfile: docker/Dockerfile
+      dockerfile: api/Dockerfile
+    ports:
+      - "8000:8000"
     volumes:
       - ..:/app
     environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=scrapy4paws
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/scrapy4paws
     depends_on:
       postgres:
         condition: service_healthy
-    command: >
-      sh -c "alembic upgrade head &&
-             python scripts/run_scraper.py"
 
   frontend:
     build:
