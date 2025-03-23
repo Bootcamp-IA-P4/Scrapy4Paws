@@ -72,18 +72,6 @@ class NuevaVidaScraper(BaseBeautifulSoupScraper):
                 elif '/hembra/' in url.lower():
                     gender = "female"
                 
-            # Extract age / Извлечение возраста
-            age = "unknown"
-            description = card.select_one('.entry-content')
-            if description:
-                age_text = description.text.lower()
-                if "cachorro" in age_text or "cachorrito" in age_text:
-                    age = "kitten"
-                elif "adulto" in age_text:
-                    age = "adult"
-                elif "senior" in age_text:
-                    age = "senior"
-                
             # Extract source URL / Извлечение исходного URL
             source_url = url_element['href'] if url_element and 'href' in url_element.attrs else None
             if not source_url:
@@ -97,14 +85,13 @@ class NuevaVidaScraper(BaseBeautifulSoupScraper):
                 image_url = img_element['src']
             
             print(f"\nExtracted basic info for: {name}")
-            print(f"Gender: {gender}, Age: {age}")
+            print(f"Gender: {gender}")
             print(f"Image URL: {image_url}")
             print(f"Source URL: {source_url}")
             
             return {
                 "name": name,
                 "gender": gender,
-                "age": age,
                 "source_url": source_url,
                 "image_url": image_url
             }
@@ -131,50 +118,57 @@ class NuevaVidaScraper(BaseBeautifulSoupScraper):
                 
             soup = BeautifulSoup(html, 'html.parser')
             
-            # Extract description / Извлечение описания
-            description = ""
+            # Extract description
             description_element = soup.select_one('.elementor-widget-theme-post-excerpt .elementor-widget-container')
-            if description_element:
-                description = description_element.text.strip()
-            
-            # Extract gender / Извлечение пола
-            gender = "unknown"
+            description = description_element.get_text(strip=True) if description_element else ""
+
+            # Extract gender from description
             gender_element = soup.select_one('.elementor-widget-text-editor:contains("Sexo:")')
+            gender = "unknown"
             if gender_element:
-                gender_text = gender_element.text.strip().lower()
+                gender_text = gender_element.get_text(strip=True).lower()
                 if "macho" in gender_text:
                     gender = "male"
                 elif "hembra" in gender_text:
                     gender = "female"
-                    
-            # Extract birth date / Извлечение даты рождения
+
+            # Extract birth date
+            birth_date_element = soup.select_one('.elementor-widget-text-editor:contains("Fecha de nacimiento")')
             birth_date = None
-            try:
-                birth_date_element = soup.select_one('.elementor-widget-text-editor:contains("Fecha de nacimiento")')
-                if birth_date_element:
-                    birth_date_text = birth_date_element.text.strip()
-                    if ':' in birth_date_text:
-                        birth_date_str = birth_date_text.split(':')[1].strip()
-                        # Remove any extra characters and clean the date string
-                        birth_date_str = re.sub(r'[^\d/]', '', birth_date_str)
-                        if birth_date_str:
-                            try:
-                                # Parse the date string
-                                birth_date = datetime.strptime(birth_date_str, "%d/%m/%Y")
-                            except ValueError:
-                                print(f"Could not parse birth date: {birth_date_str}")
-            except Exception as e:
-                print(f"Error extracting birth date: {str(e)}")
-                    
+            if birth_date_element:
+                try:
+                    date_text = birth_date_element.get_text(strip=True)
+                    date_match = re.search(r'(\d{2}/\d{2}/\d{4})', date_text)
+                    if date_match:
+                        birth_date = datetime.strptime(date_match.group(1), '%d/%m/%Y')
+                except Exception as e:
+                    print(f"Error parsing birth date: {e}")
+
+            # Extract age
+            age_element = soup.select_one('.elementor-widget-text-editor:contains("Edad:")')
+            age = "unknown"
+            if age_element:
+                age_text = age_element.get_text(strip=True).lower()
+                print(f"Found age in detailed info: {age_text}")
+                if "cachorro" in age_text or "gatito" in age_text:
+                    age = "kitten"
+                elif "joven" in age_text:
+                    age = "young"
+                elif "adulto" in age_text:
+                    age = "adult"
+                elif "abuelo" in age_text:
+                    age = "senior"
+
             print(f"Extracted detailed info:")
-            print(f"Description: {description[:100]}...")
+            print(f"Description: {description}")
             print(f"Gender: {gender}")
             print(f"Birth date: {birth_date}")
-            
+
             return {
-                "description": description,
-                "birth_date": birth_date,
-                "gender": gender  # Обновляем пол из детальной информации
+                'description': description,
+                'birth_date': birth_date,
+                'gender': gender,
+                'age': age
             }
             
         except Exception as e:
