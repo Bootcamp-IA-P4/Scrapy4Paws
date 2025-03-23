@@ -1,8 +1,6 @@
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, DateTime
 from datetime import datetime, timezone
-
-Base = declarative_base()
+from config.settings import Base
 
 class BaseModel(Base):
     __abstract__ = True

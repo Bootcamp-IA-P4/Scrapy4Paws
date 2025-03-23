@@ -1,33 +1,33 @@
 import os
 import sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from api.config.settings import SessionLocal
-from api.models.base import Base
-from api.models.database import User, Animal, Shelter
-from api.scrapers.web.nuevavida_scraper import NuevaVidaScraper
+from config.settings import SessionLocal
+from models.base import Base
+from models.database import User, Animal, Shelter
+from scrapers.web.nuevavida_scraper import NuevaVidaScraper
 from sqlalchemy import text
 
 def main():
     """Основная функция для запуска скрапера"""
     try:
+        print("\nStarting scraper process...")
         # Создаем сессию базы данных
         session = SessionLocal()
         
         # Очищаем таблицу animals и сбрасываем последовательность
+        print("Clearing existing data...")
         session.execute(text("TRUNCATE TABLE animals CASCADE;"))
         session.execute(text("ALTER SEQUENCE animals_id_seq RESTART WITH 1;"))
         session.commit()
         
         # Запускаем скрапер
+        print("Starting scraper...")
         scraper = NuevaVidaScraper()
         animals, shelter_info = scraper.run()
-        
-        # Проверяем существующих животных
-        existing_animals = session.query(Animal).all()
-        existing_names = {animal.name for animal in existing_animals}
+        print(f"Scraper finished. Found {len(animals)} animals")
         
         # Создаем или получаем приют
+        print(f"\nProcessing shelter: {shelter_info['name']}")
         shelter = session.query(Shelter).filter(Shelter.name == shelter_info["name"]).first()
         if not shelter:
             shelter = Shelter(
@@ -39,10 +39,14 @@ def main():
             session.add(shelter)
             session.commit()
             session.refresh(shelter)
+            print(f"Created new shelter with ID: {shelter.id}")
+        else:
+            print(f"Found existing shelter with ID: {shelter.id}")
         
-        # Сохраняем только новых животных
+        # Сохраняем животных
+        print("\nSaving animals to database...")
         for animal_data in animals:
-            if animal_data['name'] not in existing_names:
+            try:
                 animal = Animal(
                     name=animal_data["name"],
                     gender=animal_data["gender"],
@@ -55,12 +59,12 @@ def main():
                     shelter_id=shelter.id
                 )
                 session.add(animal)
-                print(f"Added new animal: {animal_data['name']}")
-            else:
-                print(f"Animal already exists: {animal_data['name']}")
+                print(f"Added animal: {animal_data['name']}")
+            except Exception as e:
+                print(f"Error saving animal {animal_data.get('name', 'unknown')}: {str(e)}")
         
         session.commit()
-        print(f"Successfully processed {len(animals)} animals")
+        print(f"\nSuccessfully processed {len(animals)} animals")
         
     except Exception as e:
         print(f"Error running scraper: {str(e)}")

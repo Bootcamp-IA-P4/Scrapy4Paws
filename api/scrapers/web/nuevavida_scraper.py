@@ -6,12 +6,12 @@ import requests
 from datetime import datetime
 import re
 
-class NuevavidaScraper(BaseBeautifulSoupScraper):
+class NuevaVidaScraper(BaseBeautifulSoupScraper):
     """Scraper for Nuevavida website / Скрапер для сайта Nuevavida"""
     
     def __init__(self):
         """Initialize the scraper / Инициализация скрапера"""
-        super().__init__("https://nuevavida.org/product-category/gatos/")
+        super().__init__("https://adoptargatosmadrid-nuevavida.org/gatos-en-adopcion/")
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
@@ -20,8 +20,10 @@ class NuevavidaScraper(BaseBeautifulSoupScraper):
         """Get page content with proper encoding handling / Получение содержимого страницы с правильной обработкой кодировки"""
         try:
             print(f"\nAttempting to fetch page: {url}")
+            print(f"Using headers: {self.headers}")
             response = requests.get(url, headers=self.headers, timeout=30)
             print(f"Response status: {response.status_code}")
+            print(f"Response headers: {dict(response.headers)}")
             
             if response.status_code == 200:
                 # Handle encoding / Обработка кодировки
@@ -36,6 +38,7 @@ class NuevavidaScraper(BaseBeautifulSoupScraper):
                         print("Using UTF-8 encoding")
                 
                 print("Successfully retrieved HTML")
+                print(f"HTML preview: {response.text[:500]}")
                 return response.text
             else:
                 print(f"Error fetching page. Status: {response.status_code}")
@@ -53,42 +56,57 @@ class NuevavidaScraper(BaseBeautifulSoupScraper):
         """Extract basic information from a cat card / Извлечение базовой информации из карточки кота"""
         try:
             # Extract name / Извлечение имени
-            name_element = card.select_one('h2.woocommerce-loop-product__title')
+            name_element = card.find('h2', class_='woocommerce-loop-product__title')
             if not name_element:
                 print("Name element not found")
                 return None
             name = name_element.text.strip()
             
-            # Extract gender from name / Извлечение пола из имени
+            # Extract gender from URL / Извлечение пола из URL
             gender = "unknown"
-            if name.lower().startswith(("macho", "macho ")):
-                gender = "male"
-                name = name[6:].strip()  # Remove "MACHO " prefix / Удаление префикса "MACHO "
-            elif name.lower().startswith(("hembra", "hembra ")):
-                gender = "female"
-                name = name[7:].strip()  # Remove "HEMBRA " prefix / Удаление префикса "HEMBRA "
+            url_element = card.find('a', class_='woocommerce-LoopProduct-link')
+            if url_element and 'href' in url_element.attrs:
+                url = url_element['href']
+                if '/macho/' in url.lower():
+                    gender = "male"
+                elif '/hembra/' in url.lower():
+                    gender = "female"
                 
             # Extract age / Извлечение возраста
             age = "unknown"
-            age_text = name.lower()
-            if "cachorro" in age_text or "cachorrito" in age_text:
-                age = "kitten"
-            elif "adulto" in age_text:
-                age = "adult"
-            elif "senior" in age_text:
-                age = "senior"
+            description = card.select_one('.entry-content')
+            if description:
+                age_text = description.text.lower()
+                if "cachorro" in age_text or "cachorrito" in age_text:
+                    age = "kitten"
+                elif "adulto" in age_text:
+                    age = "adult"
+                elif "senior" in age_text:
+                    age = "senior"
                 
             # Extract source URL / Извлечение исходного URL
-            source_url = card.select_one('a.woocommerce-LoopProduct-link')['href']
+            source_url = url_element['href'] if url_element and 'href' in url_element.attrs else None
+            if not source_url:
+                print("Source URL not found")
+                return None
+            
+            # Extract image URL / Извлечение URL изображения
+            image_url = None
+            img_element = card.find('img', class_='attachment-woocommerce_thumbnail')
+            if img_element and 'src' in img_element.attrs:
+                image_url = img_element['src']
             
             print(f"\nExtracted basic info for: {name}")
             print(f"Gender: {gender}, Age: {age}")
+            print(f"Image URL: {image_url}")
+            print(f"Source URL: {source_url}")
             
             return {
                 "name": name,
                 "gender": gender,
                 "age": age,
-                "source_url": source_url
+                "source_url": source_url,
+                "image_url": image_url
             }
             
         except Exception as e:
@@ -115,55 +133,48 @@ class NuevavidaScraper(BaseBeautifulSoupScraper):
             
             # Extract description / Извлечение описания
             description = ""
-            main_container = soup.select_one('.elementor-element-7a01d681 .elementor-widget-container')
+            description_element = soup.select_one('.elementor-widget-theme-post-excerpt .elementor-widget-container')
+            if description_element:
+                description = description_element.text.strip()
             
-            if main_container:
-                # Get all text elements / Получение всех текстовых элементов
-                text_elements = []
-                for element in main_container.stripped_strings:
-                    text = element.strip()
-                    # Skip empty strings, emails, birth dates and short texts / Пропускаем пустые строки, email, даты рождения и короткие тексты
-                    if (text and 
-                        not '@' in text and 
-                        not 'nacimiento' in text.lower() and 
-                        len(text) > 10):
-                        text_elements.append(text)
-                
-                if text_elements:
-                    description = ' '.join(text_elements)
-                    
-            # Remove three-letter tags at the end / Удаление трехбуквенных тегов в конце
-            if description:
-                words = description.split()
-                if words and len(words[-1]) == 3:
-                    description = ' '.join(words[:-1])
+            # Extract gender / Извлечение пола
+            gender = "unknown"
+            gender_element = soup.select_one('.elementor-widget-text-editor:contains("Sexo:")')
+            if gender_element:
+                gender_text = gender_element.text.strip().lower()
+                if "macho" in gender_text:
+                    gender = "male"
+                elif "hembra" in gender_text:
+                    gender = "female"
                     
             # Extract birth date / Извлечение даты рождения
             birth_date = None
             try:
-                # Try to find birth date in special element / Пробуем найти дату рождения в специальном элементе
-                birth_date_element = soup.select_one('.elementor-element-7a01d681 .elementor-widget-container')
+                birth_date_element = soup.select_one('.elementor-widget-text-editor:contains("Fecha de nacimiento")')
                 if birth_date_element:
-                    birth_date_text = birth_date_element.get_text()
-                    if 'nacimiento' in birth_date_text.lower():
-                        birth_date = birth_date_text.split('nacimiento')[-1].strip()
+                    birth_date_text = birth_date_element.text.strip()
+                    if ':' in birth_date_text:
+                        birth_date_str = birth_date_text.split(':')[1].strip()
+                        # Remove any extra characters and clean the date string
+                        birth_date_str = re.sub(r'[^\d/]', '', birth_date_str)
+                        if birth_date_str:
+                            try:
+                                # Parse the date string
+                                birth_date = datetime.strptime(birth_date_str, "%d/%m/%Y")
+                            except ValueError:
+                                print(f"Could not parse birth date: {birth_date_str}")
             except Exception as e:
-                print(f"Error extracting birth date from special element: {str(e)}")
-                
-            if not birth_date:
-                try:
-                    # Try to find birth date in general page text / Пробуем найти дату рождения в общем тексте страницы
-                    page_text = soup.get_text()
-                    if 'nacimiento' in page_text.lower():
-                        birth_date = page_text.split('nacimiento')[-1].split('\n')[0].strip()
-                except Exception as e:
-                    print(f"Error extracting birth date from page text: {str(e)}")
+                print(f"Error extracting birth date: {str(e)}")
                     
-            print(f"Extracted detailed info: birth_date={birth_date}")
+            print(f"Extracted detailed info:")
+            print(f"Description: {description[:100]}...")
+            print(f"Gender: {gender}")
+            print(f"Birth date: {birth_date}")
             
             return {
                 "description": description,
-                "birth_date": birth_date
+                "birth_date": birth_date,
+                "gender": gender  # Обновляем пол из детальной информации
             }
             
         except Exception as e:
@@ -184,20 +195,24 @@ class NuevavidaScraper(BaseBeautifulSoupScraper):
         soup = BeautifulSoup(html, 'html.parser')
         try:
             # Find all cat cards / Поиск всех карточек котов
-            cat_cards = soup.select('li.product.type-product')
+            cat_cards = soup.select('li.product')
             print(f"\nFound cat cards: {len(cat_cards)}")
             
             # Process cards / Обработка карточек
             for card in cat_cards:
                 try:
+                    print("\nProcessing new cat card...")
                     # Extract basic information / Извлечение базовой информации
                     basic_info = self.extract_basic_info(card)
                     if not basic_info:
+                        print("Failed to extract basic info")
                         continue
+                    
+                    print(f"Basic info extracted: {basic_info}")
                     
                     # Extract detailed information / Извлечение детальной информации
                     detailed_info = self.extract_detailed_info(basic_info['source_url'])
-                    print("detailed_info", detailed_info)
+                    print(f"Detailed info extracted: {detailed_info}")
 
                     # Combine information / Объединение информации
                     animal_data = {
@@ -219,6 +234,7 @@ class NuevavidaScraper(BaseBeautifulSoupScraper):
         except Exception as e:
             print(f"Error in extract_animals: {str(e)}")
             
+        print(f"\nTotal animals extracted: {len(animals)}")
         return animals
 
     def run(self) -> tuple[List[Dict[str, Any]], Dict[str, str]]:

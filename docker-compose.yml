@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - scrapy4paws-network
+
+  api:
+    build: 
+      context: .
+      dockerfile: api/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      - db
+    volumes:
+      - ./api:/app
+    networks:
+      - scrapy4paws-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "8501:8501"
+    environment:
+      POSTGRES_HOST: ${DB_HOST}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_PORT: ${DB_PORT}
+    depends_on:
+      - db
+    networks:
+      - scrapy4paws-network
+
+volumes:
+  postgres_data:
+
+networks:
+  scrapy4paws-network:
+    driver: bridge 
