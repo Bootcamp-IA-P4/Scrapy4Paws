@@ -17,13 +17,14 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Копируем код API
-COPY api/ .
+COPY api/ /app/api/
+COPY .env /app/
 
 # Делаем скрипт запуска исполняемым
-RUN chmod +x start.sh
+RUN chmod +x /app/api/start.sh
 
 # Открываем порт
 EXPOSE 8000
 
 # Запускаем приложение через скрипт
-CMD ["./start.sh"]
+CMD ["/app/api/start.sh"]

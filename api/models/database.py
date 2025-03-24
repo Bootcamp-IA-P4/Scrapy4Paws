@@ -3,10 +3,11 @@ from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from .base import Base
+from sqlalchemy.ext.declarative import declarative_base
 from typing import Optional
 from sqlalchemy.sql import func
 
+Base = declarative_base()
 
 class Shelter(Base):
     __tablename__ = "shelters"

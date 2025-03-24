@@ -1,9 +1,11 @@
 import os
 import sys
 
+# Добавляем текущую директорию в PYTHONPATH
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
 from config.settings import SessionLocal
-from models.base import Base
-from models.database import User, Animal, Shelter
+from models.database import Animal, Shelter
 from scrapers.web.nuevavida_scraper import NuevaVidaScraper
 from sqlalchemy import text
 

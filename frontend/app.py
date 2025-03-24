@@ -25,16 +25,25 @@ def get_animals(filters=None):
         return []
 
 # Функция для обновления статуса животного
-def update_animal_status(animal_id, is_adopted):
+def update_animal_status(animal_id: int, is_adopted: bool):
+    """
+    Обновление статуса усыновления животного
+    """
     try:
+        st.write(f"Attempting to update animal {animal_id} status to {is_adopted}")
         response = requests.put(
             f"{API_URL}/api/animals/{animal_id}",
             json={"is_adopted": is_adopted}
         )
+        st.write(f"Response status: {response.status_code}")
+        st.write(f"Response content: {response.text}")
         response.raise_for_status()
         return True
     except requests.exceptions.RequestException as e:
         st.error(f"Ошибка при обновлении статуса: {str(e)}")
+        return False
+    except Exception as e:
+        st.error(f"Неожиданная ошибка: {str(e)}")
         return False
 
 # Конфигурация страницы
@@ -128,8 +137,11 @@ for animal in animals:
             # Кнопка усыновления
             if not animal.get('is_adopted', False):
                 if st.button("Adoptar", key=f"adopt_{animal['id']}"):
+                    st.write(f"Button clicked for animal {animal['id']}")
                     if update_animal_status(animal['id'], True):
                         st.success(f"¡Gracias por adoptar a {animal['name']}!")
                         st.experimental_rerun()
+                    else:
+                        st.error("No se pudo actualizar el estado de adopción")
         
         st.markdown("---") 

@@ -9,7 +9,7 @@ echo "Database is ready!"
 
 # Запускаем скрапер из корневой директории
 echo "Starting scraper..."
-cd /app && python -m scripts.run_scraper
+cd /app/api && python -m scripts.run_scraper
 
 # После успешного скрапинга запускаем FastAPI
 echo "Starting FastAPI application..."

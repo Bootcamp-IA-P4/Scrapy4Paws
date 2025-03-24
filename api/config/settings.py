@@ -1,10 +1,10 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
 from pydantic_settings import BaseSettings
 from pydantic import validator, SecretStr
 import os
 from dotenv import load_dotenv
+from models.database import Base
 
 # Загружаем переменные окружения из .env файла
 load_dotenv()
@@ -16,6 +16,13 @@ class Settings(BaseSettings):
     DB_NAME: str
     DB_USER: str
     DB_PASSWORD: SecretStr  # Используем SecretStr для безопасного хранения пароля
+    
+    # API settings
+    API_URL: str
+    
+    # Frontend settings
+    STREAMLIT_SERVER_PORT: int
+    STREAMLIT_SERVER_ADDRESS: str
     
     @validator('DB_PORT')
     def validate_port(cls, v):
@@ -51,7 +58,6 @@ settings = Settings()
 SQLALCHEMY_DATABASE_URL = f"postgresql://{settings.DB_USER}:{settings.DB_PASSWORD.get_secret_value()}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
 
 # Database dependency
 def get_db():

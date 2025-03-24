@@ -12,18 +12,18 @@ class NuevaVidaScraper(BaseBeautifulSoupScraper):
     def __init__(self):
         """Initialize the scraper / Инициализация скрапера"""
         super().__init__("https://adoptargatosmadrid-nuevavida.org/gatos-en-adopcion/")
-        self.headers = {
+        self.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
+        })
 
     def get_page(self, url: str) -> Optional[str]:
         """Get page content with proper encoding handling / Получение содержимого страницы с правильной обработкой кодировки"""
         try:
-            print(f"\nAttempting to fetch page: {url}")
-            print(f"Using headers: {self.headers}")
+            self.logger.info(f"Attempting to fetch page: {url}")
+            self.logger.debug(f"Using headers: {self.headers}")
             response = requests.get(url, headers=self.headers, timeout=30)
-            print(f"Response status: {response.status_code}")
-            print(f"Response headers: {dict(response.headers)}")
+            self.logger.info(f"Response status: {response.status_code}")
+            self.logger.debug(f"Response headers: {dict(response.headers)}")
             
             if response.status_code == 200:
                 # Handle encoding / Обработка кодировки
@@ -31,25 +31,25 @@ class NuevaVidaScraper(BaseBeautifulSoupScraper):
                     content_type = response.headers['content-type'].lower()
                     if 'charset=' in content_type:
                         charset = content_type.split('charset=')[-1]
-                        print(f"Detected charset from headers: {charset}")
+                        self.logger.debug(f"Detected charset from headers: {charset}")
                         response.encoding = charset
                     else:
                         response.encoding = 'utf-8'
-                        print("Using UTF-8 encoding")
+                        self.logger.debug("Using UTF-8 encoding")
                 
-                print("Successfully retrieved HTML")
-                print(f"HTML preview: {response.text[:500]}")
+                self.logger.info("Successfully retrieved HTML")
+                self.logger.debug(f"HTML preview: {response.text[:500]}")
                 return response.text
             else:
-                print(f"Error fetching page. Status: {response.status_code}")
-                print(f"Response text: {response.text[:500]}")
+                self.logger.error(f"Error fetching page. Status: {response.status_code}")
+                self.logger.error(f"Response text: {response.text[:500]}")
                 return None
                 
         except requests.exceptions.RequestException as e:
-            print(f"Request error: {str(e)}")
+            self.logger.error(f"Request error: {str(e)}")
             return None
         except Exception as e:
-            print(f"Unexpected error: {str(e)}")
+            self.logger.error(f"Unexpected error: {str(e)}")
             return None
 
     def extract_basic_info(self, card: BeautifulSoup) -> Optional[Dict[str, Any]]:

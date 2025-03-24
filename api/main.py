@@ -38,7 +38,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Pydantic модель для ответа
+# Pydantic модели для ответа и обновления
 class AnimalResponse(BaseModel):
     id: int
     name: str
@@ -49,6 +49,9 @@ class AnimalResponse(BaseModel):
     image_url: str
     source_url: str
     shelter_id: int
+    is_adopted: bool
+
+class AnimalUpdate(BaseModel):
     is_adopted: bool
 
 # Функция для подключения к базе данных
@@ -187,6 +190,36 @@ async def get_animal(animal_id: int):
         cur.close()
         conn.close()
 
+@app.put("/api/animals/{animal_id}")
+async def update_animal(animal_id: int, animal_update: AnimalUpdate):
+    """
+    Обновление статуса усыновления животного
+    """
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Проверяем существование животного
+        cur.execute("SELECT id FROM animals WHERE id = %s", (animal_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Animal not found")
+        
+        # Обновляем статус
+        cur.execute("""
+            UPDATE animals 
+            SET is_adopted = %s 
+            WHERE id = %s
+        """, (animal_update.is_adopted, animal_id))
+        
+        conn.commit()
+        return {"message": "Animal status updated successfully"}
+        
+    except Exception as e:
+        logger.error(f"Error updating animal status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close()
 
 @app.get("/api/check-table")
 async def check_table():
