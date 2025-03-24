@@ -127,15 +127,19 @@ async def get_animals(
         if age:
             query += " AND age = %s"
             params.append(age)
+            logger.info(f"Adding age filter: {age}")
         if gender:
             query += " AND gender = %s"
             params.append(gender)
+            logger.info(f"Adding gender filter: {gender}")
         if shelter_id:
             query += " AND shelter_id = %s"
             params.append(shelter_id)
+            logger.info(f"Adding shelter_id filter: {shelter_id}")
         if is_adopted is not None:
             query += " AND is_adopted = %s"
             params.append(is_adopted)
+            logger.info(f"Adding is_adopted filter: {is_adopted}")
             
         logger.info(f"Executing query: {query}")
         logger.info(f"With parameters: {params}")
@@ -258,6 +262,36 @@ async def check_table():
         cur.close()
         conn.close()
 
+@app.get("/api/check-values")
+async def check_values():
+    """
+    Проверка уникальных значений в базе данных
+    """
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Получаем уникальные значения для каждого поля
+        cur.execute("SELECT DISTINCT gender FROM animals")
+        genders = [row[0] for row in cur.fetchall()]
+        
+        cur.execute("SELECT DISTINCT age FROM animals")
+        ages = [row[0] for row in cur.fetchall()]
+        
+        return {
+            "status": "ok",
+            "genders": genders,
+            "ages": ages
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+    finally:
+        cur.close()
+        conn.close()
 
 if __name__ == "__main__":
     import uvicorn

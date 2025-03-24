@@ -63,13 +63,13 @@ with st.sidebar:
     # Filtro por género
     gender_filter = st.selectbox(
         "Género",
-        ["Todos", "Macho", "Hembra", "Desconocido"]
+        ["Todos", "Macho", "Hembra"]
     )
     
     # Filtro por edad
     age_filter = st.selectbox(
         "Edad",
-        ["Todos", "Cachorro", "Adulto", "Senior", "Desconocido"]
+        ["Todos", "Cachorro", "Adulto", "Abuelo"]
     )
     
     # Filtro por estado de adopción
@@ -82,18 +82,16 @@ with st.sidebar:
 filters = {}
 if gender_filter != "Todos":
     gender_map = {
-        "Macho": "male",
-        "Hembra": "female",
-        "Desconocido": "unknown"
+        "Macho": "macho",
+        "Hembra": "hembra"
     }
     filters["gender"] = gender_map[gender_filter]
 
 if age_filter != "Todos":
     age_map = {
-        "Cachorro": "kitten",
-        "Adulto": "adult",
-        "Senior": "senior",
-        "Desconocido": "unknown"
+        "Cachorro": "cachorro",
+        "Adulto": "adulto",
+        "Abuelo": "abuelo"
     }
     filters["age"] = age_map[age_filter]
 
