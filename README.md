@@ -1,23 +1,34 @@
 # 🐾 Scrapy4Paws 🐾
 
-## 🎯 Description
-Scrapy4Paws is a web application for finding and adopting animals(cats) from shelters. The application collects data about cats from various shelter websites and provides a convenient interface for viewing and adopting them.
+A web scraping application that collects information about cats available for adoption from Nuevavida shelter in Madrid. Built with FastAPI, PostgreSQL, and Streamlit. The project is designed with extensibility in mind, allowing for easy addition of more shelters in the future.
 
-## 🛠 Technologies
-- Python 
-- SQLAlchemy
-- Alembic
-- PostgreSQL
-- Docker
-- BeautifulSoup4
-- Pydantic
-- Python-dotenv
+## 🌟 Features
 
-## 📋 Requirements
+- Automated scraping of cat adoption information from Nuevavida shelter (expandable to other shelters)
+- RESTful API for accessing the collected data
+- Interactive web interface built with Streamlit
+- PostgreSQL database for data storage
+- Docker containerization for easy deployment
+- Alembic migrations for database management
+- Modular scraper architecture for easy integration of new shelters
+
+## 🛠️ Tech Stack
+
+- **Backend**: FastAPI, SQLAlchemy
+- **Frontend**: Streamlit
+- **Database**: PostgreSQL
+- **Scraping**: BeautifulSoup4, Requests
+- **Containerization**: Docker, Docker Compose
+- **Database Migrations**: Alembic
+
+## 🚀 Getting Started
+
+### Prerequisites
+
 - Docker
 - Docker Compose
 
-## 🚀 Installation and Setup
+### Installation
 
 1. Clone the repository:
 ```bash
@@ -25,99 +36,72 @@ git clone https://github.com/yourusername/scrapy4paws.git
 cd scrapy4paws
 ```
 
-2. Create a `.env` file in the project root:
-```env
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DB=scrapy4paws
-DATABASE_URL=postgresql://postgres:postgres@postgres:5432/scrapy4paws
+2. Create a `.env` file based on `.env.example`:
+```bash
+cp .env.example .env
 ```
 
-3. Run the application using Docker Compose:
+3. Update the `.env` file with your database credentials and other settings.
+
+4. Build and start the containers:
 ```bash
-docker-compose -f docker/docker-compose.yml up --build
+docker-compose up -d
 ```
+
+The application will be available at:
+- Frontend: http://localhost:8501
+- API: http://localhost:8000
+- API Documentation: http://localhost:8000/docs
 
 ## 📁 Project Structure
+
 ```
 scrapy4paws/
 ├── api/
-│   ├── models/
-│   │   ├── base.py
-│   │   └── database.py
-│   ├── scrapers/
-│   │   └── web/
-│   │       └── nuevavida_scraper.py
-│   └── config/
-│       └── database.py
-├── alembic/
-│   ├── versions/
-│   │   └── initial_migration.py
-│   └── env.py
-├── docker/
-│   ├── Dockerfile
-│   └── docker-compose.yml
-├── scripts/
-│   └── run_scraper.py
-├── .env
-├── .gitignore
-├── alembic.ini
-├── requirements.txt
+│   ├── config/         # Configuration files
+│   ├── models/         # Database models
+│   ├── schemas/        # Pydantic schemas
+│   ├── scripts/        # Utility scripts
+│   └── scrapers/       # Web scrapers
+├── frontend/           # Streamlit frontend
+├── alembic/           # Database migrations
+├── docker-compose.yml
 └── README.md
 ```
 
-## 🗄 Database
-The project uses PostgreSQL with the following main tables:
+## 🔄 Database Migrations
 
-### Users
-- id (PK)
-- username (unique, indexed)
-- email (unique, indexed)
-- city (indexed)
-- password
-- is_admin
-- created_at
-- updated_at
+To apply database migrations:
+```bash
+docker-compose exec api alembic upgrade head
+```
 
-### Animals
-- id (PK)
-- name
-- gender
-- age
-- birth_date
-- description
-- image_url
-- source_url
-- is_adopted
-- shelter_id (FK)
-- created_at
+To create a new migration:
+```bash
+docker-compose exec api alembic revision --autogenerate -m "description"
+```
 
-### Shelters
-- id (PK)
-- name
-- address
-- website
-- description
-- created_at
+## 🐱 Available Endpoints
 
-### Adoption Requests
-- id (PK)
-- animal_id (FK)
-- user_id (FK)
-- status
-- request_date
+- `GET /api/animals` - Get all animals
+- `GET /api/animals/{id}` - Get animal by ID
+- `PUT /api/animals/{id}` - Update animal information
 
-## 🔄 Scraping
-The application collects data about animals from [Nueva Vida](https://adoptargatosmadrid-nuevavida.org/). The scraper extracts:
-- Basic information (name, gender, age)
-- Detailed description
-- Birth date
-- Image URL
-- Animal page URL
+## 🔍 Scraping
 
-## 🔒 Security
-Currently implemented:
-- Environment variables for database configuration
-- Basic database schema with proper relationships and constraints
+The application automatically scrapes data from Nuevavida shelter website. The scraper runs when the application starts and collects:
+- Animal names
+- Ages
+- Genders
+- Descriptions
+- Images
+- Shelter information
+
+> ⚠️ **Important Note**: The website's domain was changed on March 23rd, 2024, requiring project adaptation. If scraping fails, please check:
+> - Website URL accessibility
+> - Website structure and selectors (they may have changed)
+> - Website's robots.txt and scraping policies
+
+
 
 
