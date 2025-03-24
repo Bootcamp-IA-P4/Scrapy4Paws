@@ -2,7 +2,7 @@
 
 # Ждем, пока база данных будет готова
 echo "Waiting for database to be ready..."
-while ! nc -z db 5432; do
+while ! nc -z $POSTGRES_HOST $POSTGRES_PORT; do
   sleep 0.1
 done
 echo "Database is ready!"
@@ -13,4 +13,4 @@ cd /app && python -m scripts.run_scraper
 
 # После успешного скрапинга запускаем FastAPI
 echo "Starting FastAPI application..."
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload 
+exec uvicorn main:app --host 0.0.0.0 --port 8000 --reload 

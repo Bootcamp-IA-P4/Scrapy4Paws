@@ -5,19 +5,18 @@ WORKDIR /app
 # Установка системных зависимостей
 RUN apt-get update && apt-get install -y \
     libpq-dev \
-    postgresql \
-    postgresql-contrib \
-    postgresql-server-dev-all \
     gcc \
     python3-dev \
     netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
-# Копирование requirements.txt и установка зависимостей
+# Копируем файлы зависимостей
 COPY requirements.txt .
+
+# Устанавливаем зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копирование кода приложения
+# Копируем код API
 COPY api/ .
 
 # Делаем скрипт запуска исполняемым
@@ -26,5 +25,5 @@ RUN chmod +x start.sh
 # Открываем порт
 EXPOSE 8000
 
-# Запускаем скрипт вместо прямого запуска uvicorn
+# Запускаем приложение через скрипт
 CMD ["./start.sh"]

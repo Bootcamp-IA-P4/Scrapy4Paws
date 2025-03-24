@@ -128,9 +128,9 @@ class NuevaVidaScraper(BaseBeautifulSoupScraper):
             if gender_element:
                 gender_text = gender_element.get_text(strip=True).lower()
                 if "macho" in gender_text:
-                    gender = "male"
+                    gender = "macho"
                 elif "hembra" in gender_text:
-                    gender = "female"
+                    gender = "hembra"
 
             # Extract birth date
             birth_date_element = soup.select_one('.elementor-widget-text-editor:contains("Fecha de nacimiento")')
@@ -151,13 +151,13 @@ class NuevaVidaScraper(BaseBeautifulSoupScraper):
                 age_text = age_element.get_text(strip=True).lower()
                 print(f"Found age in detailed info: {age_text}")
                 if "cachorro" in age_text or "gatito" in age_text:
-                    age = "kitten"
+                    age = "cachorro"
                 elif "joven" in age_text:
-                    age = "young"
+                    age = "joven"
                 elif "adulto" in age_text:
-                    age = "adult"
+                    age = "adulto"
                 elif "abuelo" in age_text:
-                    age = "senior"
+                    age = "abuelo"
 
             print(f"Extracted detailed info:")
             print(f"Description: {description}")

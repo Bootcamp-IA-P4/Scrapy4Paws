@@ -1,23 +1,43 @@
 import streamlit as st
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import requests
 import os
 from dotenv import load_dotenv
 
-# Cargar variables de entorno desde el archivo .env raíz
-load_dotenv('../.env')
+# Загружаем переменные окружения
+load_dotenv()
 
-# Configuración de conexión a la base de datos
-def get_db_connection():
-    return psycopg2.connect(
-        host=os.getenv('POSTGRES_HOST', 'localhost'),
-        database=os.getenv('POSTGRES_DB', 'scrapy4paws'),
-        user=os.getenv('POSTGRES_USER', 'postgres'),
-        password=os.getenv('POSTGRES_PASSWORD', 'postgres'),
-        port=os.getenv('POSTGRES_PORT', '5432')
-    )
+# Конфигурация API
+API_URL = os.getenv('API_URL', 'http://api:8000')
 
-# Configuración de la página
+# Функция для получения данных с API
+def get_animals(filters=None):
+    try:
+        url = f"{API_URL}/api/animals"
+        response = requests.get(url, params=filters)
+        response.raise_for_status()
+        data = response.json()
+        return data
+    except requests.exceptions.RequestException as e:
+        st.error(f"Ошибка при получении данных: {str(e)}")
+        return []
+    except Exception as e:
+        st.error(f"Неожиданная ошибка: {str(e)}")
+        return []
+
+# Функция для обновления статуса животного
+def update_animal_status(animal_id, is_adopted):
+    try:
+        response = requests.put(
+            f"{API_URL}/api/animals/{animal_id}",
+            json={"is_adopted": is_adopted}
+        )
+        response.raise_for_status()
+        return True
+    except requests.exceptions.RequestException as e:
+        st.error(f"Ошибка при обновлении статуса: {str(e)}")
+        return False
+
+# Конфигурация страницы
 st.set_page_config(
     page_title="Scrapy4Paws - Refugio de Animales",
     page_icon="🐾",
@@ -27,7 +47,7 @@ st.set_page_config(
 # Encabezado de la aplicación
 st.title("🐾 Scrapy4Paws - Refugio de Animales")
 
-# Crear barra lateral para filtros
+# Создаем боковую панель для фильтров
 with st.sidebar:
     st.header("Filtros")
     
@@ -49,85 +69,63 @@ with st.sidebar:
         ["Todos", "Disponible", "Adoptado"]
     )
 
-# Contenido principal
-try:
-    conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
-    
-    # Formar consulta SQL con filtros
-    query = "SELECT * FROM animals WHERE 1=1"
-    params = []
-    
-    if gender_filter != "Todos":
-        gender_map = {
-            "Macho": "male",
-            "Hembra": "female",
-            "Desconocido": "unknown"
-        }
-        query += " AND gender = %s"
-        params.append(gender_map[gender_filter])
-    
-    if age_filter != "Todos":
-        age_map = {
-            "Cachorro": "kitten",
-            "Adulto": "adult",
-            "Senior": "senior",
-            "Desconocido": "unknown"
-        }
-        query += " AND age = %s"
-        params.append(age_map[age_filter])
-    
-    if adoption_filter != "Todos":
-        is_adopted = adoption_filter == "Adoptado"
-        query += " AND is_adopted = %s"
-        params.append(is_adopted)
-    
-    # Ejecutar consulta
-    cur.execute(query, params)
-    animals = cur.fetchall()
-    
-    # Mostrar tarjetas de animales
-    for animal in animals:
-        with st.container():
-            col1, col2 = st.columns([1, 2])
-            
-            with col1:
-                if animal.get('image_url'):
-                    st.image(animal['image_url'], use_column_width=True)
-                else:
-                    st.image("https://via.placeholder.com/300x200?text=Sin+Imagen", use_column_width=True)
-            
-            with col2:
-                st.subheader(animal['name'])
-                
-                # Información del animal
-                info_col1, info_col2, info_col3 = st.columns(3)
-                
-                with info_col1:
-                    st.write(f"**Género:** {animal['gender']}")
-                with info_col2:
-                    st.write(f"**Edad:** {animal['age']}")
-                with info_col3:
-                    status = "✅ Adoptado" if animal['is_adopted'] else "🆕 Disponible"
-                    st.write(f"**Estado:** {status}")
-                
-                # Descripción
-                if animal.get('description'):
-                    st.write("**Descripción:**")
-                    st.write(animal['description'])
-                
-                # Botón de adopción
-                if not animal['is_adopted']:
-                    if st.button("Adoptar", key=f"adopt_{animal['id']}"):
-                        # Aquí irá la lógica de adopción
-                        st.success(f"¡Gracias por adoptar a {animal['name']}!")
-            
-            st.markdown("---")
+# Подготавливаем фильтры для API
+filters = {}
+if gender_filter != "Todos":
+    gender_map = {
+        "Macho": "male",
+        "Hembra": "female",
+        "Desconocido": "unknown"
+    }
+    filters["gender"] = gender_map[gender_filter]
 
-except Exception as e:
-    st.error(f"Error de conexión a la base de datos: {str(e)}")
-finally:
-    if 'cur' in locals():
-        cur.close()
-    if 'conn' in locals():
-        conn.close() 
+if age_filter != "Todos":
+    age_map = {
+        "Cachorro": "kitten",
+        "Adulto": "adult",
+        "Senior": "senior",
+        "Desconocido": "unknown"
+    }
+    filters["age"] = age_map[age_filter]
+
+if adoption_filter != "Todos":
+    filters["is_adopted"] = adoption_filter == "Adoptado"
+
+# Получаем данные через API
+animals = get_animals(filters)
+
+# Отображаем карточки животных
+for animal in animals:
+    with st.container():
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            if animal.get('image_url'):
+                st.image(animal['image_url'], use_column_width=True)
+            else:
+                st.image("https://via.placeholder.com/300x200?text=Sin+Imagen", use_column_width=True)
+        
+        with col2:
+            st.subheader(animal['name'])
+            
+            # Информация о животном
+            info_col1, info_col2 = st.columns(2)
+            
+            with info_col1:
+                st.write(f"**Género:** {animal.get('gender', 'Desconocido')}")
+            with info_col2:
+                st.write(f"**Edad:** {animal.get('age', 'Desconocido')}")
+            
+            # Описание
+            if animal.get('description'):
+                st.write("**Descripción:**")
+                st.write(animal['description'])
+            
+            # Кнопка усыновления
+            if not animal.get('is_adopted', False):
+                if st.button("Adoptar", key=f"adopt_{animal['id']}"):
+                    if update_animal_status(animal['id'], True):
+                        st.success(f"¡Gracias por adoptar a {animal['name']}!")
+                        st.experimental_rerun()
+        
+        st.markdown("---") 
