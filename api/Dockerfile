@@ -8,23 +8,25 @@ RUN apt-get update && apt-get install -y \
     gcc \
     python3-dev \
     netcat-traditional \
+    dos2unix \
     && rm -rf /var/lib/apt/lists/*
 
 # Копируем файлы зависимостей
-COPY requirements.txt .
+COPY requirements.txt /app/
+COPY .env /app/
 
 # Устанавливаем зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Копируем код API
-COPY api/ /app/api/
-COPY .env /app/
+COPY ./api /app/api
 
-# Делаем скрипт запуска исполняемым
-RUN chmod +x /app/api/start.sh
+# Конвертируем конец строк и делаем скрипт запуска исполняемым
+RUN dos2unix /app/api/start.sh && \
+    chmod +x /app/api/start.sh
 
 # Открываем порт
 EXPOSE 8000
 
 # Запускаем приложение через скрипт
-CMD ["/app/api/start.sh"]
+CMD ["/bin/bash", "/app/api/start.sh"]
