@@ -63,11 +63,10 @@ scrapy4paws/
 │   ├── schemas/        # Pydantic schemas
 │   ├── scripts/        # Utility scripts
 │   └── scrapers/       # Web scrapers
+│   └── alembic/        # Database migrations
 ├── frontend/           # Streamlit frontend
-├── alembic/           # Database migrations
 ├── docker-compose.yml
 └── README.md
-```
 
 ## 🔄 Database Migrations
 
