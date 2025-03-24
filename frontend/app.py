@@ -116,6 +116,10 @@ for animal in animals:
             with info_col2:
                 st.write(f"**Edad:** {animal.get('age', 'Desconocido')}")
             
+            # Статус усыновления
+            adoption_status = "Adoptado" if animal.get('is_adopted', False) else "Disponible"
+            st.write(f"**Estado:** {adoption_status}")
+            
             # Описание
             if animal.get('description'):
                 st.write("**Descripción:**")

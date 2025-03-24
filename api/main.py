@@ -101,7 +101,8 @@ async def root():
 async def get_animals(
     age: Optional[str] = None,
     gender: Optional[str] = None,
-    shelter_id: Optional[int] = None
+    shelter_id: Optional[int] = None,
+    is_adopted: Optional[bool] = None
 ):
     """
     Получение списка животных с возможностью фильтрации
@@ -129,6 +130,9 @@ async def get_animals(
         if shelter_id:
             query += " AND shelter_id = %s"
             params.append(shelter_id)
+        if is_adopted is not None:
+            query += " AND is_adopted = %s"
+            params.append(is_adopted)
             
         logger.info(f"Executing query: {query}")
         logger.info(f"With parameters: {params}")
@@ -195,7 +199,7 @@ async def debug():
         # Получаем данные о животных
         cur.execute("""
             SELECT id, name, age, gender, description, birth_date, 
-                   image_url, source_url, shelter_id
+                   image_url, source_url, shelter_id, is_adopted
             FROM animals 
             LIMIT 5
         """)
@@ -269,7 +273,7 @@ async def debug_data():
         # Получаем данные о животных
         cur.execute("""
             SELECT id, name, age, gender, description, birth_date, 
-                   image_url, source_url, shelter_id
+                   image_url, source_url, shelter_id, is_adopted
             FROM animals 
             LIMIT 5
         """)
@@ -291,7 +295,8 @@ async def debug_data():
                 "birth_date": row[5],
                 "image_url": row[6],
                 "source_url": row[7],
-                "shelter_id": row[8]
+                "shelter_id": row[8],
+                "is_adopted": row[9]
             })
             
             # Сохраняем типы данных
@@ -304,7 +309,8 @@ async def debug_data():
                 "birth_date": type(row[5]),
                 "image_url": type(row[6]),
                 "source_url": type(row[7]),
-                "shelter_id": type(row[8])
+                "shelter_id": type(row[8]),
+                "is_adopted": type(row[9])
             })
             
             # Обрабатываем данные через модель
