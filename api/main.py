@@ -187,42 +187,6 @@ async def get_animal(animal_id: int):
         cur.close()
         conn.close()
 
-@app.get("/api/debug")
-async def debug():
-    """
-    Эндпоинт для отладки
-    """
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        
-        # Получаем данные о животных
-        cur.execute("""
-            SELECT id, name, age, gender, description, birth_date, 
-                   image_url, source_url, shelter_id, is_adopted
-            FROM animals 
-            LIMIT 5
-        """)
-        
-        animals = []
-        for row in cur.fetchall():
-            animal = Animal(*row)
-            animals.append(animal.to_dict())
-            
-        return {
-            "status": "ok",
-            "animals": animals,
-            "count": len(animals)
-        }
-        
-    except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e)
-        }
-    finally:
-        cur.close()
-        conn.close()
 
 @app.get("/api/check-table")
 async def check_table():
@@ -261,73 +225,6 @@ async def check_table():
         cur.close()
         conn.close()
 
-@app.get("/api/debug-data")
-async def debug_data():
-    """
-    Эндпоинт для отладки данных с подробной информацией
-    """
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        
-        # Получаем данные о животных
-        cur.execute("""
-            SELECT id, name, age, gender, description, birth_date, 
-                   image_url, source_url, shelter_id, is_adopted
-            FROM animals 
-            LIMIT 5
-        """)
-        
-        debug_info = {
-            "raw_data": [],
-            "processed_data": [],
-            "types": []
-        }
-        
-        for row in cur.fetchall():
-            # Сохраняем сырые данные
-            debug_info["raw_data"].append({
-                "id": row[0],
-                "name": row[1],
-                "age": row[2],
-                "gender": row[3],
-                "description": row[4],
-                "birth_date": row[5],
-                "image_url": row[6],
-                "source_url": row[7],
-                "shelter_id": row[8],
-                "is_adopted": row[9]
-            })
-            
-            # Сохраняем типы данных
-            debug_info["types"].append({
-                "id": type(row[0]),
-                "name": type(row[1]),
-                "age": type(row[2]),
-                "gender": type(row[3]),
-                "description": type(row[4]),
-                "birth_date": type(row[5]),
-                "image_url": type(row[6]),
-                "source_url": type(row[7]),
-                "shelter_id": type(row[8]),
-                "is_adopted": type(row[9])
-            })
-            
-            # Обрабатываем данные через модель
-            animal = Animal(*row)
-            animal_dict = animal.to_dict()
-            debug_info["processed_data"].append(animal_dict)
-            
-        return debug_info
-        
-    except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e)
-        }
-    finally:
-        cur.close()
-        conn.close()
 
 if __name__ == "__main__":
     import uvicorn
