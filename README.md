@@ -32,7 +32,7 @@ A web scraping application that collects information about cats available for ad
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/scrapy4paws.git
+git clone https://github.com/MarynaDRST/Scrapy4Paws.git
 cd scrapy4paws
 ```
 
