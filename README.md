@@ -17,7 +17,7 @@ A web scraping application that collects information about cats available for ad
 - **Backend**: FastAPI, SQLAlchemy
 - **Frontend**: Streamlit
 - **Database**: PostgreSQL
-- **Scraping**: BeautifulSoup4, Requests
+- **Scraping**: BeautifulSoup4
 - **Containerization**: Docker, Docker Compose
 - **Database Migrations**: Alembic
 
