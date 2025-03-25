@@ -1,6 +1,6 @@
 # 🐾 Scrapy4Paws 🐾
 
-A web scraping application that collects information about cats available for adoption from shelters. Built with FastAPI, PostgreSQL, and Streamlit. The project is designed with extensibility in mind, allowing for easy addition of more shelters in the future.
+A web scraping application that collects information about animals available for adoption from shelters. Built with FastAPI, PostgreSQL, and Streamlit. The project is designed with extensibility in mind, allowing for easy addition of more shelters in the future.
 
 ## 🌟 Features
 
