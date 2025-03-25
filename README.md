@@ -4,7 +4,7 @@ A web scraping application that collects information about animals available for
 
 ## 🌟 Features
 
-- Automated scraping of cat adoption information from Nuevavida shelter (expandable to other shelters)
+- Automated scraping of cat adoption information 
 - RESTful API for accessing the collected data
 - Interactive web interface built with Streamlit
 - PostgreSQL database for data storage
